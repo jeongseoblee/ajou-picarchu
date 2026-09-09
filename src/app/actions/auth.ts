@@ -1,6 +1,6 @@
 "use server";
-
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { loginSchema, signupSchema, zodFieldErrors, type ActionResult } from "@/lib/validation";
 
@@ -78,3 +78,85 @@ export async function resendConfirmation(email: string): Promise<ActionResult> {
   return { ok: true, message: "인증 메일을 다시 보냈습니다." };
 }
 
+
+// ---------- Account Security V1 ----------
+const newPasswordSchema = z
+  .string()
+  .min(8, "비밀번호는 8자 이상이어야 합니다")
+  .max(72)
+  .regex(/[A-Za-z]/, "영문을 포함해야 합니다")
+  .regex(/[0-9]/, "숫자를 포함해야 합니다");
+
+/** 로그인 사용자의 비밀번호 변경: 현재 비밀번호 재인증 → updateUser */
+export async function changePassword(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return { ok: false, error: "로그인이 필요합니다." };
+
+  const current = String(formData.get("current_password") ?? "");
+  const next = String(formData.get("new_password") ?? "");
+  const confirm = String(formData.get("confirm_password") ?? "");
+
+  const fieldErrors: Record<string, string[]> = {};
+  if (!current) fieldErrors.current_password = ["현재 비밀번호를 입력하세요"];
+  const np = newPasswordSchema.safeParse(next);
+  if (!np.success) fieldErrors.new_password = np.error.issues.map((i) => i.message);
+  if (next !== confirm) fieldErrors.confirm_password = ["새 비밀번호가 일치하지 않습니다"];
+  if (current && next && current === next) fieldErrors.new_password = ["현재 비밀번호와 다른 비밀번호를 사용하세요"];
+  if (Object.keys(fieldErrors).length) return { ok: false, error: "입력값을 확인하세요.", fieldErrors };
+
+  // 현재 비밀번호 재인증 (실패 시 변경하지 않음)
+  const { error: reauthErr } = await supabase.auth.signInWithPassword({ email: user.email, password: current });
+  if (reauthErr) return { ok: false, error: "현재 비밀번호가 올바르지 않습니다.", fieldErrors: { current_password: ["현재 비밀번호가 올바르지 않습니다"] } };
+
+  const { error } = await supabase.auth.updateUser({ password: next });
+  if (error) {
+    if (/same_password|different from the old/i.test(error.message)) return { ok: false, error: "현재 비밀번호와 다른 비밀번호를 사용하세요." };
+    if (/weak|pwned|easy to guess/i.test(error.message)) return { ok: false, error: "너무 쉬운 비밀번호입니다. 다른 비밀번호를 사용하세요." };
+    return { ok: false, error: "비밀번호 변경에 실패했습니다. 잠시 후 다시 시도하세요." };
+  }
+  return { ok: true, message: "비밀번호가 변경되었습니다." };
+}
+
+/** 비밀번호 재설정 메일 요청. 이메일 존재 여부와 무관하게 동일한 응답을 돌려준다. */
+export async function requestPasswordReset(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const parsed = loginSchema.shape.email.safeParse(formData.get("email"));
+  const done: ActionResult = { ok: true, message: "가입된 계정이라면 비밀번호 재설정 이메일을 전송했습니다. 메일함(스팸함 포함)을 확인하세요." };
+  if (!parsed.success) return { ok: false, error: "올바른 이메일을 입력하세요.", fieldErrors: { email: ["올바른 이메일을 입력하세요"] } };
+
+  const supabase = await createClient();
+  // 오류(미가입, rate limit 등)도 사용자에게는 동일 메시지 → 계정 존재 여부 노출 방지
+  await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${siteUrl()}/auth/callback?next=/auth/reset-password`,
+  });
+  return done;
+}
+
+/** recovery 세션에서 새 비밀번호 설정 */
+export async function resetPassword(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "재설정 링크가 만료되었거나 유효하지 않습니다. 비밀번호 재설정을 다시 요청하세요." };
+
+  const next = String(formData.get("new_password") ?? "");
+  const confirm = String(formData.get("confirm_password") ?? "");
+  const fieldErrors: Record<string, string[]> = {};
+  const np = newPasswordSchema.safeParse(next);
+  if (!np.success) fieldErrors.new_password = np.error.issues.map((i) => i.message);
+  if (next !== confirm) fieldErrors.confirm_password = ["새 비밀번호가 일치하지 않습니다"];
+  if (Object.keys(fieldErrors).length) return { ok: false, error: "입력값을 확인하세요.", fieldErrors };
+
+  const { error } = await supabase.auth.updateUser({ password: next });
+  if (error) {
+    if (/same_password|different from the old/i.test(error.message)) return { ok: false, error: "이전 비밀번호와 다른 비밀번호를 사용하세요." };
+    if (/weak|pwned|easy to guess/i.test(error.message)) return { ok: false, error: "너무 쉬운 비밀번호입니다. 다른 비밀번호를 사용하세요." };
+    return { ok: false, error: "비밀번호 변경에 실패했습니다. 링크가 만료되었다면 재설정을 다시 요청하세요." };
+  }
+  // recovery 세션 종료 → 새 비밀번호로 재로그인 유도
+  await supabase.auth.signOut();
+  return { ok: true, message: "비밀번호가 변경되었습니다. 새 비밀번호로 로그인하세요." };
+}

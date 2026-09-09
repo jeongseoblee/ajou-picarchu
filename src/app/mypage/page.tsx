@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Container, PageHeader, EmptyState } from "@/components/site/container";
 import { StatusBadge, RoleBadge } from "@/components/site/status-badge";
 import { ProfileForm } from "@/components/mypage/profile-form";
+import { ChangePasswordForm } from "@/components/mypage/change-password-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/constants";
@@ -78,6 +79,12 @@ export default async function MyPage({ searchParams }: PageProps<"/mypage">) {
             </Table>
           )}
           {profile.status === "approved" && <p className="text-sm mt-4"><Link href="/archive" className="underline underline-offset-4">자료실로 이동</Link></p>}
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-1">계정 보안</h2>
+          <p className="text-sm text-muted-foreground mb-4">비밀번호를 변경하려면 현재 비밀번호를 먼저 확인합니다.</p>
+          <ChangePasswordForm />
         </section>
       </Container>
     </>

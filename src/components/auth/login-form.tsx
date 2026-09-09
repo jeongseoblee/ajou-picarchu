@@ -31,9 +31,10 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
         <FieldError errors={fe?.password} />
       </div>
       <Button type="submit" className="w-full" disabled={pending}>{pending ? "로그인 중..." : "로그인"}</Button>
-      <p className="text-sm text-muted-foreground text-center">
-        계정이 없으신가요? <Link href="/signup" className="underline underline-offset-4 text-foreground">회원가입</Link>
-      </p>
+      <div className="text-sm text-muted-foreground text-center space-y-1.5">
+        <p>계정이 없으신가요? <Link href="/signup" className="underline underline-offset-4 text-foreground">회원가입</Link></p>
+        <p><Link href="/auth/forgot-password" className="underline underline-offset-4">비밀번호를 잊으셨나요?</Link></p>
+      </div>
     </form>
   );
 }
