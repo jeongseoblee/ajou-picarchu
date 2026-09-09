@@ -27,6 +27,17 @@ export interface Post {
   updated_at: string;
 }
 
+export interface PostAttachment {
+  id: string;
+  post_id: string;
+  storage_path: string;
+  original_filename: string;
+  file_size: number;
+  mime_type: string;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
 export interface Resource {
   id: string;
   title: string;

@@ -1,4 +1,5 @@
 export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (bucket 제한과 동일)
+export const MAX_POST_ATTACHMENTS = 5;
 
 export const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   "application/pdf": [".pdf"],
