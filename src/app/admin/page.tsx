@@ -24,7 +24,7 @@ export default async function AdminDashboard() {
     { label: "전체 회원", value: members.count ?? 0, href: "/admin/members?status=all" },
     { label: "승인 대기", value: pending.count ?? 0, href: "/admin/members?status=pending" },
     { label: "등록 자료", value: resources.count ?? 0, href: "/admin/resources" },
-    { label: "게시물", value: posts.count ?? 0 },
+    { label: "게시물", value: posts.count ?? 0, href: "/admin/posts" },
     { label: "최근 7일 다운로드", value: downloads.count ?? 0 },
   ];
 

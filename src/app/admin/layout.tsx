@@ -6,6 +6,7 @@ const MENU = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/members", label: "회원 관리" },
   { href: "/admin/resources", label: "자료 관리" },
+  { href: "/admin/posts", label: "게시물 관리" },
   { href: "/admin/site-editor", label: "사이트 편집" },
 ];
 
