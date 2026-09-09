@@ -7,7 +7,6 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
-import { SITE } from "@/lib/site";
 import { signOut } from "@/app/actions/auth";
 
 const NAV = [
@@ -18,7 +17,7 @@ const NAV = [
   { href: "/archive", label: "ARCHIVE" },
 ];
 
-export function Navbar({ profile }: { profile: Profile | null }) {
+export function Navbar({ profile, siteName, siteSubtitle }: { profile: Profile | null; siteName: string; siteSubtitle: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isAdmin = profile?.role === "admin" && profile.status === "approved";
@@ -58,8 +57,8 @@ export function Navbar({ profile }: { profile: Profile | null }) {
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto max-w-6xl px-5 sm:px-8 h-16 flex items-center justify-between">
         <Link href="/" className="font-semibold tracking-tight text-lg" onClick={() => setOpen(false)}>
-          {SITE.name}
-          <span className="hidden sm:inline text-muted-foreground font-normal text-sm ml-2">{SITE.nameEn}</span>
+          {siteName}
+          {siteSubtitle && <span className="hidden sm:inline text-muted-foreground font-normal text-sm ml-2">{siteSubtitle}</span>}
         </Link>
 
         <nav aria-label="주 메뉴" className="hidden md:flex items-center gap-7">
